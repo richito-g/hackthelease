@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#f8f7f3"><title>Homebase — Campus housing explorer</title><link rel="icon" href="icon.svg"><link rel="stylesheet" href="style.css"><script defer src="model.js"></script><script defer src="atlas.js"></script><script defer src="app.js"></script><script defer src="semester.js"></script><script defer src="discover.js"></script></head>
+<body><header><div class="topbar"><a class="brand" href="#discover" aria-label="Homebase Discover"><span class="logo" aria-hidden="true">⬡</span>homebase<span class="brand-dot">.</span></a>
+<nav aria-label="Main navigation"><a href="#discover">Discover</a><a href="#semester">Semester lab</a><a href="#replay">Day replay</a></nav><div class="location"><i data-icon="pin"></i> Ann Arbor, MI</div></div></header>
+<main><div class="view-toolbar"><div class="intro-actions"><label for="commute-mode">Commute<select id="commute-mode"><option value="walk">Walk only</option><option value="transit">Walk + bus</option><option value="missed">Walk + bus · longer waits</option></select></label><button class="edit" data-action="routine"><i data-icon="sliders"></i> Edit routine</button></div></div>
+<section id="discover" class="discover" aria-labelledby="discover-title">
+  <div class="discover-head">
+    <div><h1 id="discover-title">Discover homes</h1><p>24 sample listings in Ann Arbor</p></div>
+    <div class="discover-tabs" role="group" aria-label="Listing view"><button id="browse-deck" aria-pressed="true">Swipe deck</button><button id="browse-saved" aria-pressed="false">Saved <span id="saved-count">0</span></button></div>
+  </div>
+  <div class="discover-grid">
+    <div class="deck-stage">
+      <div id="card-stage" aria-label="Listing to review"></div>
+      <div id="deck-controls" class="deck-controls">
+        <button id="undo-swipe"><span aria-hidden="true">↶</span> Undo</button>
+        <button id="pass-home"><span aria-hidden="true">←</span> Pass</button>
+        <button id="save-home">Save home <span aria-hidden="true">→</span></button>
+      </div>
+      <p class="deck-hint">Swipe left to pass, right to save. Arrow keys work when the listing is focused.</p>
+    </div>
+    <aside class="housing-profile" aria-label="Housing preferences">
+      <div class="profile-heading"><h2>Your routine</h2><button data-action="routine" class="text-button">Edit</button></div>
+      <dl id="deck-routine"></dl>
+      <fieldset><legend>Must-haves</legend><div id="housing-needs"></div></fieldset>
+      <label class="fit-filter"><input type="checkbox" id="only-fit"> Only show homes that fit</label>
+      <p id="deck-progress"></p>
+    </aside>
+  </div>
+  <div id="saved-homes" hidden></div>
+  <p id="deck-status" role="status" class="sr"></p>
+</section>
+<div id="semester-view" hidden><section class="lab-intro" aria-labelledby="lab-title"><h1 id="lab-title">Test your semester</h1><p>Use three benchmark homes to see what happens when your schedule changes.</p></section>
+<section class="workspace" aria-label="Housing explorer"><div class="atlas"><canvas id="city" aria-label="Illustrated campus map with three apartment locations"></canvas><div id="pins"></div><div class="map-caption"><span class="map-icon"><i data-icon="layers"></i></span><div><h2>Campus atlas</h2><small>FICTIONAL LISTINGS</small></div></div><div class="north" aria-label="North direction">N<span>▴</span></div><div class="map-tools"><button id="zoom-in" aria-label="Zoom in">+</button><button id="zoom-out" aria-label="Zoom out">−</button><button id="reset-map" aria-label="Reset map view"><i data-icon="focus"></i></button></div><div class="legend"><span></span> Selected home <em></em>Illustrative map</div></div>
+<aside id="spotlight" aria-label="Selected apartment"></aside></section>
+<section class="lab" id="semester" aria-labelledby="semester-title">
+  <div class="lab-heading"><div><div class="eyebrow">SEMESTER LAB</div><h2 id="semester-title">What if your week changes?</h2><p>Move visits between campuses and watch the best fit change.</p></div><button class="secondary" id="semester-reset">Load demo week</button></div>
+  <div class="lab-grid"><div><div id="week-chips" aria-hidden="true"></div><label for="north-days">North Campus visits per week <output id="north-output"></output></label><input type="range" id="north-days" step="1"><div class="range-ends"><span id="range-min"></span><span id="range-max"></span></div><p class="lab-note" id="weekly-assumptions"></p><div class="lab-actions"><button class="secondary" data-action="routine">Edit budget &amp; visits</button><button class="primary" id="toggle-uncertainty" aria-expanded="false" aria-controls="uncertainty">My schedule is uncertain</button></div></div><div id="week-results"></div></div>
+  <div id="uncertainty" hidden><div class="lab-heading"><div><h3>Which lease holds up?</h3><p>Compare how far each home falls behind the best choice for each possible week.</p></div><div class="bounds"><label>Fewest North visits<select id="first-north"></select></label><label>Most North visits<select id="last-north"></select></label></div></div><div id="hedge-result" aria-live="polite"></div><div id="gap-grid" class="table-wrap"></div><p class="lab-note">Gaps include your value of commute time. Choose a week to see it on the atlas.</p></div>
+</section>
+<section class="shortlist"><div class="section-head"><div><h2>Benchmark homes</h2></div><button class="text-button" data-action="compare"><i data-icon="compare"></i> Compare homes</button></div><div id="cards"></div></section></div>
+<section class="lab" id="replay" hidden aria-labelledby="replay-title">
+  <div class="lab-heading"><div><div class="eyebrow">DAY REPLAY</div><h2 id="replay-title">Can you get home for lunch?</h2><p>One Tuesday, a Central Campus lecture and a North Campus lab.</p></div><button class="primary" id="earlier-lab">Lab starts 4 minutes earlier</button></div>
+  <div class="replay-controls"><label>Lecture ends<input type="time" id="lecture-end" value="11:00" required></label><label>Lab starts<input type="time" id="lab-start" value="12:30" required></label><label>Minimum time at home (min)<input type="number" id="home-minimum" min="0" max="180" value="30" required></label></div>
+  <div id="replay-result" aria-live="polite"></div><div id="replay-lanes"></div>
+  <p class="lab-note">Tuesday replay uses a 5-minute arrival buffer and example weekday departures. Weekly rankings use separate round trips.</p>
+</section>
+<footer><span>Homebase · University of Michigan pilot</span><button data-action="method"><i data-icon="info"></i> Demo data &amp; methodology</button></footer></main><dialog id="modal" aria-labelledby="modal-title"><div class="modal-shell"><button class="close" aria-label="Close dialog">×</button><div id="modal-content"></div></div></dialog><div role="status" id="announce" class="sr"></div></body></html>
