@@ -10,6 +10,22 @@ function fitDescription(home) {
   return reasons.join(' · ') || (home.hasNeeds ? 'Fits your budget and must-haves' : 'Within budget');
 }
 
+function WeekStrip({home,routine}) {
+  if (!home.weekly) return null;
+  const segments = home.trips.map(({out,back},index)=>({
+    name:['Central','North','Kerrytown'][index],
+    minutes:(out.minutes+back.minutes)*routine.days[index],
+    color:['#365b48','#4e6084','#9a6143'][index]
+  })).filter(segment=>segment.minutes>0);
+  return <div className="week-strip" aria-hidden="true">
+    <div className="week-strip-header"><span>Travel in your week</span><strong>{duration(home.weekly)}</strong></div>
+    <div className="week-strip-track">{segments.map(segment=><span key={segment.name}
+      style={{flexGrow:segment.minutes,background:segment.color}} />)}</div>
+    <div className="week-strip-key">{segments.map(segment=><span key={segment.name} style={{'--visit-color':segment.color}}>
+      {segment.name} {duration(segment.minutes)}</span>)}</div>
+  </div>;
+}
+
 function Listing({home,routine,onReview,cardRef}) {
   const start = useRef(null);
   const [drag,setDrag] = useState(0);
@@ -49,7 +65,7 @@ function Listing({home,routine,onReview,cardRef}) {
     <div className="listing-art">
       <Study home={home} />
       <span className="listing-area">{home.area}</span>
-      <span className="art-caption">Architectural illustration</span>
+      <div className="listing-art-footer"><WeekStrip home={home} routine={routine} /><span className="art-caption">Architectural illustration</span></div>
       <span className="gesture-label" aria-hidden="true" />
     </div>
     <div className="listing-body">

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { cash, destinations, presets } from '../model.js';
 import Discover from './discover.jsx';
+import Showcase from './showcase.jsx';
 import { DayReplay, SemesterLab } from './labs.jsx';
 import { modes, useDeck, useRoutine } from './state.js';
 import { Dialog } from './ui.jsx';
@@ -10,7 +11,7 @@ import '../style.css';
 const pages = {discover:'Discover',semester:'Semester lab',replay:'Day replay'};
 function currentPage() {
   const page=window.location.hash.slice(1);
-  return Object.hasOwn(pages,page)?page:'discover';
+  return Object.hasOwn(pages,page) || page==='demo' ? page : 'discover';
 }
 
 function RoutineEditor({routine,onApply,onClose}) {
@@ -86,10 +87,11 @@ function App() {
       <span className="location">Ann Arbor, MI</span>
     </div></header>
     <main id="main-content" tabIndex={-1}>
-      <div className="view-toolbar"><div className="intro-actions">
+      <div className="view-toolbar" hidden={page==='demo'}><a className="demo-link" href="#demo">Try the demo <span aria-hidden="true">↗</span></a><div className="intro-actions">
         <label>Commute <ModeSelect value={routine.mode} onChange={mode=>setRoutine({...routine,mode})}/></label>
         <button className="edit" onClick={edit}>Edit routine</button>
       </div></div>
+      {page==='demo' && <Showcase />}
       <div hidden={page!=='discover'}>
         <Discover routine={routine} deck={deck} setDeck={setDeck} onEdit={edit} showSaved={showSaved} setShowSaved={setShowSaved} />
       </div>

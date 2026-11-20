@@ -25,3 +25,12 @@ The React screens share a routine and use the original commute and ranking model
 ## Deploy to Vercel
 
 Import the GitHub repo with the project root set to the repository root. The included `vercel.json` uses Vite, runs `npm run build`, and serves `dist/`. If this repo was previously configured as a no-build static site, clear any conflicting project overrides.
+
+## 90-second judge walkthrough
+
+- **0:00–0:20.** Open **Try the demo**. The student has a $1,350 housing cap and expects to spend four days on Central Campus. Their lease is due before the class schedule is final.
+- **0:20–0:50.** Move one visit from Central to North. The Monroe gives way to Riverbend Flats. Use the paired bars to show where the change came from and the monthly time-adjusted figures to explain the ranking.
+- **0:50–1:15.** Reveal the least downside. Market House wins none of the five individual schedules but has the smallest worst-case gap, $344 per month against the best lease in each week.
+- **1:15–1:30.** Return to Discover and show how the same commute model personalizes the 24-listing swipe deck. Open the methodology for assumptions.
+
+The demo has its own sample routine and can be opened directly at `/#demo`. It uses the same calculation functions as the rest of Homebase. The format follows Devpost's guidance to show the working product and tie the technical result to a concrete user decision. [Devpost demo guidance](https://info.devpost.com/blog/how-to-present-a-successful-hackathon-demo)
