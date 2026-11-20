@@ -1,9 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Dialog } from './ui.jsx';
-import { customCommute } from '../model.js';
+import HomeMap from './home-map.jsx';
+import { cash, customCommute } from '../model.js';
 import { isLocalPlace, library, placeKey } from '../places.js';
 
-export default function PlacePicker({home,onAdd,onClose,places}) {
+export default function PlacePicker({homes,savedView,onAdd,onClose,places}) {
+  const [activeId,setActiveId]=useState(homes[0]?.id);
+  const home=homes.find(item=>item.id===activeId) ?? homes[0];
   const [query,setQuery]=useState('');
   const [results,setResults]=useState([]);
   const [selected,select]=useState(null);
@@ -42,14 +45,10 @@ export default function PlacePicker({home,onAdd,onClose,places}) {
       if (!controller.signal.aborted) setMessage('Map search is unavailable. Try again or choose the UGLi below.');
     }
   }
-  const {lat,lon}=selected ?? {lat:42.28,lon:-83.74};
-  const zoom=selected?.lat ? 0.006 : 0.035;
-  const map=new URLSearchParams({bbox:[lon-zoom,lat-zoom,lon+zoom,lat+zoom].join(','),layer:'mapnik'});
-  if (selected) map.set('marker',lat+','+lon);
   const exists=selected && places.some(p=>placeKey(p)===placeKey(selected));
   const bus=selected && home && customCommute(home,selected,'transit').out;
   return <Dialog onClose={onClose}>
-    <h2 id="dialog-title">Add a destination</h2>
+    <h2 id="dialog-title">{savedView?'Saved homes map':'Add a destination'}</h2>
     <p>Find a building, business or street address around Ann Arbor.</p>
     <form className="place-search" onSubmit={search}>
       <label htmlFor="place-query">Place or address</label>
@@ -60,7 +59,13 @@ export default function PlacePicker({home,onAdd,onClose,places}) {
     <button className="text-button" onClick={()=>{setQuery('UGLi');pick(library);}}>Use the UGLi</button>
     <p role="status">{message}</p>
     {results.map((place,i)=><button className="place-result" key={placeKey(place)+i} onClick={()=>pick(place)}>{place.name}<small>{place.detail}</small></button>)}
-    <iframe className="place-map" title="Ann Arbor destination map" src={'https://www.openstreetmap.org/export/embed.html?'+map} />
+    {places.length>0 && <label className="formrow">Routine destination<select value={places.some(p=>selected && placeKey(p)===placeKey(selected))?placeKey(selected):''} onChange={e=>{
+      const p=places.find(item=>placeKey(item)===e.target.value); if(p) pick(p);
+    }}><option value="" disabled>Choose a destination</option>{places.map(p=><option key={placeKey(p)} value={placeKey(p)}>{p.name}</option>)}</select></label>}
+    <HomeMap homes={homes} active={home} onSelect={setActiveId} destination={selected}/>
+    {home && <><label className="formrow">Travel from<select value={home.id} onChange={e=>setActiveId(e.target.value)}>
+      {homes.map(item=><option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
+      <p aria-live="polite"><strong>{home.name}</strong> · {home.area} · {cash(home.monthly)}/mo</p></>}
     {selected && <><h3>{selected.name}</h3>
       {bus && <p>From {home.name}: <strong>{customCommute(home,selected,'walk').out.minutes} min walking</strong> · {bus.bus ? bus.minutes+' min via '+bus.label : 'walking is fastest among modeled routes'}.</p>}
       <label className="formrow">Round trips per week<select value={visits} onChange={e=>setVisits(Number(e.target.value))}>{Array.from({length:8},(_,n)=><option key={n}>{n}</option>)}</select></label>

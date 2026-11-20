@@ -168,6 +168,7 @@ export default function Discover({routine:baseRoutine,deck,setDeck,onEdit,showSa
       {saved.length>0 ? <>
         <div className="compare-bar">
           <p>Select two or three homes to compare.</p>
+          <button className="secondary" onClick={()=>setPicker(true)}>View saved homes on map</button>
           <button className="primary" disabled={compare.length<2} onClick={()=>setComparisonOpen(true)}>Compare {compare.length ? '('+compare.length+')' : 'homes'}</button>
         </div>
         <div id="saved-homes">{saved.map(item=><article className="saved-home" key={item.id}>
@@ -233,7 +234,7 @@ export default function Discover({routine:baseRoutine,deck,setDeck,onEdit,showSa
           onChange={event=>{const onlyFit=event.target.checked;setDeck(current=>({...current,onlyFit}));}} /> Only show homes that fit</label>
       </aside>
     </div>}
-    {picker && <PlacePicker home={home} places={places} onClose={()=>setPicker(false)} onAdd={place=>{
+    {picker && <PlacePicker homes={showSaved || !home ? saved : [home,...saved]} savedView={showSaved} places={places} onClose={()=>setPicker(false)} onAdd={place=>{
       setDeck(current=>current.places.some(p=>placeKey(p)===placeKey(place)) ? current : {...current,places:[...current.places,place]});
       setPicker(false); setStatus('Added '+place.name+' to your routine.');
     }}/>}

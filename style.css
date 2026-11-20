@@ -476,3 +476,10 @@ dialog::backdrop { background: #17231d75; }
 .add-place {margin:.6rem 0}
 .custom-place {padding:.5rem 0;border-bottom:1px solid #d4d9d1}
 .custom-place label {justify-content:space-between}
+
+.saved-place-map {height:clamp(230px,35vh,350px);isolation:isolate}
+.home-map-pin,.home-map-destination {display:grid;place-items:center;box-sizing:border-box;background:white;color:#254937;border:2px solid currentColor;border-radius:50%;font:bold 17px/1 system-ui;box-shadow:0 1px 4px #0004}
+.home-map-pin.is-selected {color:white;background:#254937;border-color:white;outline:2px solid #254937}
+.home-map-destination {color:#fff;background:#815228;font-size:12px}
+.home-map-choices {display:grid;gap:4px}
+.home-map-choices button {text-align:left;padding:6px 8px}
