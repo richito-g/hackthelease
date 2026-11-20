@@ -88,7 +88,7 @@ function CompareSaved({homes,routine,onClose}) {
     ['Rent + utilities',home=>cash(home.rent)+' + '+cash(home.utilities)],
     ['Budget fit',home=>home.eligible?cash(routine.budget-home.monthly)+' left':cash(home.overBudget)+' over'],
     ['Weekly travel',home=>duration(home.weekly)],
-    ...routine.names.map((name,index)=>[name,home=>home.trips[index].out.minutes+' min · '+home.trips[index].out.label]),
+    ...routine.names.flatMap((name,index)=>routine.hiddenCampuses?.includes(index) && !routine.days[index] ? [] : [[name,home=>home.trips[index].out.minutes+' min · '+home.trips[index].out.label]]),
     ['Amenities',home=>home.features.map(need=>housingNeeds[need]).join(', ')],
     ['Must-haves missed',home=>home.missing.map(need=>housingNeeds[need]).join(', ') || 'None']
   ];
@@ -148,6 +148,11 @@ export default function Discover({routine:baseRoutine,deck,setDeck,onEdit,showSa
   function toggleNeed(key) {
     setDeck(current=>({...current,needs:current.needs.includes(key) ?
       current.needs.filter(need=>need!==key) : [...current.needs,key]}));
+  }
+
+  function removePlace(place) {
+    setDeck(current=>({...current,places:current.places.filter(p=>placeKey(p)!==placeKey(place))}));
+    setStatus('Removed '+place.name+' from your routine.');
   }
 
   function removeSaved(id) {
@@ -213,14 +218,14 @@ export default function Discover({routine:baseRoutine,deck,setDeck,onEdit,showSa
         <div className="profile-heading"><h2>Your routine</h2><button className="text-button" onClick={onEdit}>Edit</button></div>
         <dl id="deck-routine">
           <div><dt>Monthly cap</dt><dd>{cash(routine.budget)}</dd></div>
-          {destinations.map((name,index)=><div key={name}><dt>{name}</dt><dd>{routine.days[index]} {routine.days[index]===1?'visit':'visits'}/wk</dd></div>)}
+          {destinations.map((name,index)=>!routine.hiddenCampuses?.includes(index) || routine.days[index] ? <div key={name}><dt>{name}</dt><dd>{routine.days[index]} {routine.days[index]===1?'visit':'visits'}/wk</dd></div> : null)}
         </dl>
         {places.map((place,index)=><div className="custom-place" key={placeKey(place)}>
           <label>{place.name}<select aria-label={'Weekly visits to '+place.name} value={place.visits} onChange={event=>{
             const visits=Number(event.target.value);
             setDeck(current=>({...current,places:current.places.map((p,i)=>i===index?{...p,visits}:p)}));
           }}>{Array.from({length:8},(_,n)=><option key={n} value={n}>{n} visits/wk</option>)}</select></label>
-          <button className="text-button" aria-label={'Remove '+place.name} onClick={()=>setDeck(current=>({...current,places:current.places.filter(p=>placeKey(p)!==placeKey(place))}))}>Remove</button>
+          <button className="text-button" aria-label={'Remove '+place.name} onClick={()=>removePlace(place)}>Remove</button>
         </div>)}
         <button className="text-button add-place" onClick={()=>setPicker(true)}>+ Add a destination</button>
         <label className="area-filter">Neighborhood<select value={area} onChange={event=>setArea(event.target.value)}>
@@ -234,7 +239,7 @@ export default function Discover({routine:baseRoutine,deck,setDeck,onEdit,showSa
           onChange={event=>{const onlyFit=event.target.checked;setDeck(current=>({...current,onlyFit}));}} /> Only show homes that fit</label>
       </aside>
     </div>}
-    {picker && <PlacePicker homes={showSaved || !home ? saved : [home,...saved]} savedView={showSaved} places={places} onClose={()=>setPicker(false)} onAdd={place=>{
+    {picker && <PlacePicker homes={showSaved || !home ? saved : [home,...saved]} savedView={showSaved} onRemove={removePlace} places={places} onClose={()=>setPicker(false)} onAdd={place=>{
       setDeck(current=>current.places.some(p=>placeKey(p)===placeKey(place)) ? current : {...current,places:[...current.places,place]});
       setPicker(false); setStatus('Added '+place.name+' to your routine.');
     }}/>}

@@ -4,7 +4,7 @@ import HomeMap from './home-map.jsx';
 import { cash, customCommute } from '../model.js';
 import { isLocalPlace, library, placeKey } from '../places.js';
 
-export default function PlacePicker({homes,savedView,onAdd,onClose,places}) {
+export default function PlacePicker({homes,savedView,onAdd,onRemove,onClose,places}) {
   const [activeId,setActiveId]=useState(homes[0]?.id);
   const home=homes.find(item=>item.id===activeId) ?? homes[0];
   const [query,setQuery]=useState('');
@@ -68,8 +68,8 @@ export default function PlacePicker({homes,savedView,onAdd,onClose,places}) {
       <p aria-live="polite"><strong>{home.name}</strong> · {home.area} · {cash(home.monthly)}/mo</p></>}
     {selected && <><h3>{selected.name}</h3>
       {bus && <p>From {home.name}: <strong>{customCommute(home,selected,'walk').out.minutes} min walking</strong> · {bus.bus ? bus.minutes+' min via '+bus.label : 'walking is fastest among modeled routes'}.</p>}
-      <label className="formrow">Round trips per week<select value={visits} onChange={e=>setVisits(Number(e.target.value))}>{Array.from({length:8},(_,n)=><option key={n}>{n}</option>)}</select></label>
-      <button className="primary" disabled={exists} onClick={()=>onAdd({...selected,visits})}>{exists?'Already in your routine':'Add to my routine'}</button></>}
+      {!exists && <label className="formrow">Round trips per week<select value={visits} onChange={e=>setVisits(Number(e.target.value))}>{Array.from({length:8},(_,n)=><option key={n}>{n}</option>)}</select></label>}
+      <button className="primary" onClick={()=>{if (!exists) return onAdd({...selected,visits}); onRemove(selected); select(null); setQuery(''); setMessage('Removed '+selected.name+' from your routine.');}}>{exists?'Remove from routine':'Add to my routine'}</button></>}
     <p><small>Estimates start at the sample home’s neighborhood center. Walking uses approximate distance; bus estimates include walks to stops and modeled weekday waits. Map data © OpenStreetMap contributors.</small></p>
   </Dialog>;
 }

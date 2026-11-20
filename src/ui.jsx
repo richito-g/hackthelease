@@ -30,6 +30,7 @@ export function CampusStats({home,routine}) {
     <thead><tr><th scope="col">Destination</th><th scope="col">One way</th><th scope="col">Per week</th></tr></thead>
     <tbody>{home.trips.map(({out,back},index) => {
       const visits = routine.days[index];
+      if (!visits && routine.hiddenCampuses?.includes(index)) return null;
       const name = routine.names?.[index] ?? destinations[index];
       return <tr key={index}>
         <th scope="row">{name}<small>{out.label}{out.bus && ' · '+out.bus.from}</small></th>

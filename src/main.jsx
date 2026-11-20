@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
+import { placeKey } from '../places.js';
 import { cash, destinations, presets } from '../model.js';
 import Discover from './discover.jsx';
 import Showcase from './showcase.jsx';
 import { DayReplay, SemesterLab } from './labs.jsx';
-import { modes, useDeck, useRoutine } from './state.js';
+import { modes, restoreDeck, useDeck, useRoutine } from './state.js';
 import { Dialog } from './ui.jsx';
 import '../style.css';
 
@@ -14,8 +15,16 @@ function currentPage() {
   return Object.hasOwn(pages,page) || page==='demo' ? page : 'discover';
 }
 
-function RoutineEditor({routine,onApply,onClose}) {
+function RoutineEditor({routine,places,onApply,onClose}) {
   const [draft,setDraft]=useState(routine);
+  const [removed,setRemoved]=useState([]);
+  function toggleCampus(index,include) {
+    const days=[...draft.days];
+    days[index]=include?1:0;
+    const hiddenCampuses=(draft.hiddenCampuses ?? []).filter(i=>i!==index);
+    if (!include) hiddenCampuses.push(index);
+    setDraft({...draft,days,hiddenCampuses});
+  }
   const names={central:'Central-heavy',north:'North-heavy',market:'Kerrytown shifts'};
   return <Dialog onClose={onClose}>
     <h2 id="dialog-title">Build your week</h2>
@@ -23,15 +32,20 @@ function RoutineEditor({routine,onApply,onClose}) {
     <div className="seg" role="group" aria-label="Sample weeks">{Object.entries(presets).map(([key,preset])=>{
       const active=preset.days.every((n,index)=>n===draft.days[index]);
       return <button key={key} aria-pressed={active} className={active?'selected':undefined}
-        onClick={()=>setDraft({...draft,days:preset.days})}>{names[key]}</button>;
+        onClick={()=>setDraft({...draft,days:preset.days,hiddenCampuses:[]})}>{names[key]}</button>;
     })}</div>
-    <form onSubmit={event=>{event.preventDefault();onApply({...draft,days:draft.days.map(Number),budget:Number(draft.budget),value:Number(draft.value)});}}>
-      {destinations.map((name,index)=><label className="formrow" key={name}>
+    <form onSubmit={event=>{event.preventDefault();onApply({...draft,days:draft.days.map(Number),budget:Number(draft.budget),value:Number(draft.value)},removed);}}>
+      {destinations.map((name,index)=>draft.hiddenCampuses?.includes(index) && !draft.days[index]
+        ? <button type="button" key={name} onClick={()=>toggleCampus(index,true)}>Add {name}</button>
+        : <div key={name} className="routine-destination"><label className="formrow">
         <span>{name}<small>Round trips per week</small></span>
         <input type="number" min="0" max="7" step="1" required value={draft.days[index]} onChange={event=>{
           const days=[...draft.days];days[index]=event.target.value===''?'':Number(event.target.value);setDraft({...draft,days});
         }} />
-      </label>)}
+      </label><button type="button" className="text-button" aria-label={'Remove '+name} onClick={()=>toggleCampus(index,false)}>Remove</button></div>)}
+      {places.filter(p=>!removed.includes(placeKey(p))).map(p=><div className="formrow" key={placeKey(p)}>
+        <span>{p.name}<small>{p.visits} visits per week</small></span>
+        <button type="button" className="text-button" aria-label={'Remove '+p.name} onClick={()=>setRemoved([...removed,placeKey(p)])}>Remove</button></div>)}
       <label className="formrow"><span>Monthly housing cap<small>Rent and utilities in dollars</small></span>
         <input type="number" min="0" max="10000" required value={draft.budget} onChange={event=>setDraft({...draft,budget:event.target.value})}/></label>
       <label className="formrow"><span>Value of one hour saved<small>Dollars per hour of travel avoided</small></span>
@@ -70,6 +84,19 @@ function App() {
   const [showSaved,setShowSaved]=useState(false);
   const [dialog,setDialog]=useState(null);
   const [notice,setNotice]=useState('');
+  const [run,setRun]=useState(0);
+  function resetDemo() {
+    setRoutine({...presets.central,mode:'walk'});
+    setDeck(restoreDeck(null));
+    setShowSaved(false);
+    setRun(previous=>previous+1);
+    setDialog(null);
+    window.location.hash='discover';
+    setPage('discover');
+    window.scrollTo(0,0);
+    setNotice('Demo reset. All 24 homes are ready to review.');
+    requestAnimationFrame(()=>document.getElementById('main-content')?.focus({preventScroll:true}));
+  }
   const edit=()=>setDialog('routine');
   const close=()=>setDialog(null);
   useEffect(()=>{
@@ -87,21 +114,32 @@ function App() {
       <span className="location">Ann Arbor, MI</span>
     </div></header>
     <main id="main-content" tabIndex={-1}>
-      <div className="view-toolbar" hidden={page==='demo'}><a className="demo-link" href="#demo">Try the demo <span aria-hidden="true">↗</span></a><div className="intro-actions">
+      <div className="view-toolbar">{page!=='demo' && <a className="demo-link" href="#demo">Try the demo <span aria-hidden="true">↗</span></a>}<div className="intro-actions">
+        <button className="edit" onClick={()=>setDialog('reset')}>Reset demo</button>
+        {page!=='demo' && <>
         <label>Commute <ModeSelect value={routine.mode} onChange={mode=>setRoutine({...routine,mode})}/></label>
-        <button className="edit" onClick={edit}>Edit routine</button>
+        <button className="edit" onClick={edit}>Edit routine</button></>}
       </div></div>
+      <React.Fragment key={run}>
       {page==='demo' && <Showcase />}
       <div hidden={page!=='discover'}>
         <Discover routine={routine} deck={deck} setDeck={setDeck} onEdit={edit} showSaved={showSaved} setShowSaved={setShowSaved} />
       </div>
       <div hidden={page!=='semester'}><SemesterLab deck={deck} routine={routine} setRoutine={setRoutine} onEdit={edit} /></div>
       <div hidden={page!=='replay'}><DayReplay mode={routine.mode} /></div>
+      </React.Fragment>
       <footer><span>Homebase · University of Michigan pilot</span><button onClick={()=>setDialog('method')}>Demo data & methodology</button></footer>
     </main>
-    {dialog==='routine' && <RoutineEditor routine={routine} onApply={updated=>{
+    {dialog==='routine' && <RoutineEditor routine={routine} places={deck.places} onApply={(updated,removed)=>{
+      if (removed.length) setDeck(current=>({...current,places:current.places.filter(p=>!removed.includes(placeKey(p)))}));
       setRoutine(updated);setNotice('Routine updated. Monthly cap '+cash(updated.budget)+'.');close();
     }} onClose={close}/>}
+    {dialog==='reset' && <Dialog onClose={close}>
+      <h2 id="dialog-title">Reset the demo?</h2>
+      <p>This clears saved and passed homes, notes, custom destinations and filters in this browser. You’ll return to Discover with the starting routine and all 24 homes.</p>
+      <div className="modal-actions"><button className="secondary" onClick={close}>Cancel</button>
+        <button className="primary" onClick={resetDemo}>Reset and start over</button></div>
+    </Dialog>}
     {dialog==='method' && <Methodology onClose={close}/>}
     <p className="sr" role="status">{notice}</p>
   </>;

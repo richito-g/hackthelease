@@ -15,10 +15,10 @@ function restoreRoutine(data) {
       !data.days.every(n => Number.isInteger(n) && n >= 0 && n <= 7) ||
       !Number.isInteger(data.budget) || data.budget < 0 || data.budget > 10000 ||
       !Number.isFinite(data.value) || data.value < 0 || data.value > 100) return presets.central;
-  return {...data, mode:Object.hasOwn(modes,data.mode) ? data.mode : 'walk'};
+  return {...data, hiddenCampuses:[0,1,2].filter(i=>Array.isArray(data.hiddenCampuses) && data.hiddenCampuses.includes(i) && !data.days[i]), mode:Object.hasOwn(modes,data.mode) ? data.mode : 'walk'};
 }
 
-function restoreDeck(data) {
+export function restoreDeck(data) {
   const used = new Set();
   const swipes = Array.isArray(data?.swipes) ? data.swipes.filter(entry => {
     if (!ids.has(entry?.id) || used.has(entry.id) || !['save','pass'].includes(entry.action)) return false;
