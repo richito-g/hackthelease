@@ -95,7 +95,7 @@ function App() {
       <div hidden={page!=='discover'}>
         <Discover routine={routine} deck={deck} setDeck={setDeck} onEdit={edit} showSaved={showSaved} setShowSaved={setShowSaved} />
       </div>
-      <div hidden={page!=='semester'}><SemesterLab routine={routine} setRoutine={setRoutine} onEdit={edit} /></div>
+      <div hidden={page!=='semester'}><SemesterLab deck={deck} routine={routine} setRoutine={setRoutine} onEdit={edit} /></div>
       <div hidden={page!=='replay'}><DayReplay mode={routine.mode} /></div>
       <footer><span>Homebase · University of Michigan pilot</span><button onClick={()=>setDialog('method')}>Demo data & methodology</button></footer>
     </main>

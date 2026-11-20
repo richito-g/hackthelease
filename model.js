@@ -98,11 +98,11 @@ export function semesterBounds(days) {
   return { total, min: Math.max(0, total - 7), max: Math.min(7, total) };
 }
 
-export function semesterWeeks(routine, first, last) {
+export function semesterWeeks(routine, first, last, inventory=homes, places=[]) {
   const { total } = semesterBounds(routine.days);
   return Array.from({length: last - first + 1}, (_, offset) => {
     const north = first + offset;
-    const options = rankHomes({...routine, days: [total - north, north, routine.days[2]]});
+    const options = rankHomes({...routine, days: [total - north, north, routine.days[2]]},inventory,places);
     const winner = options[0].eligible ? options[0] : null;
     const gaps = Object.fromEntries(options.filter(home => home.eligible)
       .map(home => [home.id, home.burden - winner.burden]));

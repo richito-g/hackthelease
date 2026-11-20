@@ -1,33 +1,60 @@
-import React, { useLayoutEffect, useRef, useState } from 'react';
+import React, { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { drawAtlas } from '../atlas.js';
 import { busOptions, cash, classReplay, describeTrip, destinations, duration, homes, presets,
   rankHomes, replayDay, semesterBounds, semesterHedge, semesterWeeks } from '../model.js';
 import { CampusStats, Dialog, ListingStats, Study } from './ui.jsx';
 
-function Atlas({selected,winner,days,onSelect}) {
+// Positions on the illustrated atlas are neighborhood anchors, not street addresses.
+const atlasAreas = {
+  'Central Campus':[5.5,7.5], 'North Campus':[6.5,1.5], Kerrytown:[1.5,5.5],
+  'Old West Side':[2.2,7.6], Downtown:[3.4,6.6], 'South University':[7.4,7.1],
+  'Burns Park':[8.7,8.1], 'Fuller Road':[6,4.4]
+};
+import { discoveryHomes } from './listings.js';
+
+function Atlas({inventory,selected,winner,days,onSelect}) {
   const ref = useRef(null);
   const [zoom,setZoom] = useState(1);
+  const [openArea,setOpenArea]=useState(null);
   const [pins,setPins] = useState([]);
   useLayoutEffect(()=>{
     const canvas = ref.current;
     const draw = () => {
-      const markers=drawAtlas(canvas,selected,days,zoom);
+      const markers=drawAtlas(canvas,selected,days,zoom,inventory);
       if (markers) setPins(markers);
     };
     draw();
     const observer = new ResizeObserver(draw);
     observer.observe(canvas);
     return ()=>observer.disconnect();
-  },[selected,days,zoom]);
+  },[selected,days,zoom,inventory]);
+  const groups=new Map();
+  for (const pin of pins) {
+    const home=inventory.find(item=>item.id===pin.id);
+    if (!home) continue;
+    if (!groups.has(home.area)) groups.set(home.area,{point:pin.point,items:[]});
+    groups.get(home.area).items.push(home);
+  }
+  const choices=groups.get(openArea)?.items;
   return <div className="atlas">
     <canvas id="city" ref={ref} role="img" aria-label="Schematic Ann Arbor map and campus connections" />
-    <div id="pins">{pins.map(({id,point:[left,top]})=>{
-      const home=homes.find(item=>item.id===id);
-      return <button className={'pin '+(id===selected?'chosen ':'')+(id===winner?'winner':'')}
-        style={{left,top,'--accent':home.color}} key={id} aria-pressed={id===selected} onClick={()=>onSelect(id)}>
-        <span className="bubble"><span className="letter">{home.mark}</span>{home.name}</span>
+    <div id="pins">{Array.from(groups,([area,{point:[left,top],items}])=>{
+      const chosen=items.find(item=>item.id===selected);
+      const home=chosen ?? items[0];
+      const shared=items.length>1;
+      const title=shared ? area+' · '+items.length+' homes' : home.name;
+      return <button className={'pin '+(chosen?'chosen ':'')+(items.some(i=>i.id===winner)?'winner':'')}
+        style={{left,top,'--accent':home.color}} key={area} aria-label={title}
+        aria-expanded={shared?openArea===area:undefined} aria-pressed={shared?undefined:!!chosen}
+        onClick={()=>{if(shared) setOpenArea(openArea===area?null:area); else {setOpenArea(null);onSelect(home.id);}}}>
+        <span className="bubble"><span className="letter">{shared?items.length:home.mark}</span>{shared?area:home.name}</span>
       </button>;
     })}</div>
+    {choices?.length>1 && <div className="atlas-choices" role="group" aria-label={'Homes in '+openArea}>
+      <strong>{openArea}</strong> <button onClick={()=>setOpenArea(null)}>Close</button>
+      {choices.map(home=><button key={home.id} aria-pressed={selected===home.id}
+        onClick={()=>{onSelect(home.id);setOpenArea(null);}}>{home.name}</button>)}
+    </div>}
     <div className="map-caption"><div><h2>Campus atlas</h2><small>FICTIONAL LISTINGS</small></div></div>
     <div className="north" aria-label="North direction">N<span>▴</span></div>
     <div className="map-tools">
@@ -46,11 +73,11 @@ function BenchmarkDialog({detail,routine,ranked,onClose}) {
   const rows=[
     ['Rent',item=>cash(item.rent)],['Utilities',item=>cash(item.utilities)],['Housing total',item=>cash(item.monthly)],
     ['Budget room',item=>item.eligible?cash(routine.budget-item.monthly):cash(item.monthly-routine.budget)+' over'],
-    ...destinations.map((name,index)=>[name,item=>item.trips[index].out.minutes+' min out / '+item.trips[index].back.minutes+' min back']),
+    ...(routine.names ?? destinations).map((name,index)=>[name,item=>item.trips[index].out.minutes+' min out / '+item.trips[index].back.minutes+' min back']),
     ['Weekly travel',item=>duration(item.weekly)],['Time-adjusted cost',item=>cash(item.burden)]
   ];
   return <Dialog wide={isCompare} onClose={onClose}>
-    <h2 id="dialog-title">{isCompare?'Compare benchmark homes':home.name}</h2>
+    <h2 id="dialog-title">{isCompare?'Compare homes':home.name}</h2>
     {isCompare ? <div className="table-wrap"><table>
       <thead><tr><th scope="col">Measure</th>{ranked.map(item=><th key={item.id} scope="col">{item.name}</th>)}</tr></thead>
       <tbody>{rows.map(([name,format])=><tr key={name}><th scope="row">{name}</th>{ranked.map(item=><td key={item.id}>{format(item)}</td>)}</tr>)}</tbody>
@@ -59,7 +86,7 @@ function BenchmarkDialog({detail,routine,ranked,onClose}) {
       <ListingStats home={home} routine={routine} />
       <CampusStats home={home} routine={routine} />
       <h3>Trip details</h3>
-      {destinations.map((name,index)=><div className="costrow" key={name}><div>
+      {(routine.names ?? destinations).map((name,index)=><div className="costrow" key={name}><div>
         <strong>{name}</strong>
         <p className="quiet">Out: {describeTrip(home.trips[index].out)}<br/>Back: {describeTrip(home.trips[index].back)}</p>
         {options && busOptions(home,index).length>0 && <details className="trip-alternatives"><summary>Outbound bus options</summary>
@@ -71,9 +98,9 @@ function BenchmarkDialog({detail,routine,ranked,onClose}) {
   </Dialog>;
 }
 
-function Uncertainty({routine,first,last,setFirst,setLast,onWeek}) {
+function Uncertainty({inventory,places,routine,first,last,setFirst,setLast,onWeek}) {
   const {min,max}=semesterBounds(routine.days);
-  const weeks=semesterWeeks(routine,first,last);
+  const weeks=semesterWeeks(routine,first,last,inventory,places);
   const hedge=semesterHedge(weeks);
   const maximum=Math.max(1,...weeks.flatMap(week=>Object.values(week.gaps)));
   const defaultHome=weeks[0].options[0];
@@ -94,7 +121,7 @@ function Uncertainty({routine,first,last,setFirst,setLast,onWeek}) {
       <div className="table-wrap"><table>
         <caption>Monthly gap from each week’s best fit</caption>
         <thead><tr><th scope="col">Apartment</th>{weeks.map(week=><th scope="col" key={week.north}>{week.north} North</th>)}<th scope="col">Worst gap</th></tr></thead>
-        <tbody>{homes.map(home=>{
+        <tbody>{inventory.map(home=>{
           const eligible=home.id in weeks[0].gaps;
           const worst=eligible ? Math.max(...weeks.map(week=>week.gaps[home.id])) : null;
           return <tr key={home.id}><th scope="row">{home.name}{home.id===hedge.id && <span className="hedge-label">SMALLEST GAP</span>}</th>
@@ -113,8 +140,20 @@ function Uncertainty({routine,first,last,setFirst,setLast,onWeek}) {
   </div>;
 }
 
-export function SemesterLab({routine,setRoutine,onEdit}) {
-  const ranked=rankHomes(routine);
+export function SemesterLab({deck,routine,setRoutine,onEdit}) {
+  const saved=useMemo(()=>{
+    const ids=new Set(deck.swipes.filter(s=>s.action==='save').map(s=>s.id));
+    return discoveryHomes.filter(h=>ids.has(h.id)).map((h,i)=>{
+      const [x,y]=atlasAreas[h.area];
+      return {...h,x,y,mark:h.mark ?? String(i+1)};
+    });
+  },[deck.swipes]);
+  const [benchmarks,setBenchmarks]=useState(false);
+  const usingSaved=saved.length>0 && !benchmarks;
+  const inventory=usingSaved?saved:homes;
+  const places=usingSaved?deck.places:[];
+  const ranked=rankHomes(routine,inventory,places);
+  const detailRoutine={...routine,names:[...destinations,...places.map(p=>p.name)],days:[...routine.days,...places.map(p=>p.visits)]};
   const winner=ranked[0];
   const [inspected,inspect] = useState(null);
   const [detail,setDetail] = useState(null);
@@ -126,7 +165,7 @@ export function SemesterLab({routine,setRoutine,onEdit}) {
   const [,north,kerrytown]=routine.days;
   const active=ranked.find(item=>item.id===inspected) ?? winner;
   const runner=ranked.find(home=>home.eligible && home.id!==active.id);
-  const maximum=Math.max(1,...[min,max].flatMap(n=>semesterWeeks(routine,n,n)[0].options.map(home=>home.weekly)));
+  const maximum=Math.max(1,...[min,max].flatMap(n=>semesterWeeks(routine,n,n,inventory,places)[0].options.map(home=>home.weekly)));
 
   function changeWeek(n,id=null) {
     setRoutine(current=>({...current,days:[total-n,n,kerrytown]}));
@@ -134,9 +173,12 @@ export function SemesterLab({routine,setRoutine,onEdit}) {
   }
 
   return <>
-    <div className="lab-intro"><h1>Test your semester</h1><p>Use three benchmark homes to see how the best lease changes with your week.</p></div>
+    <div className="lab-intro"><h1>Test your semester</h1><p>{usingSaved?'Select a saved home on the Campus atlas to see its cost and commute.': 'Explore the benchmark homes. Save homes in Discover to see them here.'}</p></div>
+    {saved.length>0 && <div className="atlas-select"><label>Show on atlas <select value={usingSaved?'saved':'benchmarks'} onChange={e=>{setBenchmarks(e.target.value==='benchmarks');inspect(null);setDetail(null);}}>
+      <option value="saved">Saved homes ({saved.length})</option><option value="benchmarks">Benchmark homes</option></select></label>
+      <label>Selected home <select value={active.id} onChange={e=>inspect(e.target.value)}>{inventory.map(h=><option key={h.id} value={h.id}>{h.name}</option>)}</select></label></div>}
     <div className="workspace">
-      <Atlas selected={active.id} winner={winner.eligible?winner.id:null} days={routine.days} onSelect={inspect} />
+      <Atlas inventory={inventory} selected={active.id} winner={winner.eligible?winner.id:null} days={routine.days} onSelect={inspect} />
       <aside id="spotlight" aria-label="Selected apartment">
         <div className="study"><Study home={active} /><span className="tag">
           {!active.eligible?'OVER BUDGET':winner.id===active.id?'BEST FIT':'SELECTED HOME'}
@@ -170,10 +212,10 @@ export function SemesterLab({routine,setRoutine,onEdit}) {
         {ranked.map(home=><div key={home.id} className="week-bar"><div><span>{home.name}</span><b>{duration(home.weekly)}/wk</b></div>
           <div className="bar-track"><span style={{'--fill':home.weekly/maximum*100+'%','--tone':home.color}} /></div></div>)}
       </div></div>
-      {uncertain && <Uncertainty routine={routine} first={first} last={last} setFirst={n=>setLimits({total,first:n,last})}
+      {uncertain && <Uncertainty inventory={inventory} places={places} routine={routine} first={first} last={last} setFirst={n=>setLimits({total,first:n,last})}
         setLast={n=>setLimits({total,first,last:n})} onWeek={changeWeek} />}
     </section>
-    <section className="shortlist"><div className="section-head"><h2>Benchmark homes</h2>
+    <section className="shortlist"><div className="section-head"><h2>{usingSaved?'Saved homes':'Benchmark homes'}</h2>
       <button className="secondary" onClick={()=>setDetail('compare')}>Compare homes</button></div>
       <div id="cards">{ranked.map((home,index)=><button key={home.id} className={'home-card '+(home.id===active.id?'active':'')}
         aria-pressed={home.id===active.id} onClick={()=>inspect(home.id)} style={{'--accent':home.color}}>
@@ -182,7 +224,7 @@ export function SemesterLab({routine,setRoutine,onEdit}) {
         <span className="card-foot"><span>{cash(home.monthly)} / mo</span><span>{duration(home.weekly)} / wk</span></span>
       </button>)}</div>
     </section>
-    {detail && <BenchmarkDialog detail={detail} routine={routine} ranked={ranked} onClose={()=>setDetail(null)} />}
+    {detail && <BenchmarkDialog detail={detail} routine={detailRoutine} ranked={ranked} onClose={()=>setDetail(null)} />}
   </>;
 }
 

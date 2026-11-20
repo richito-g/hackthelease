@@ -68,7 +68,7 @@ export function miniature(canvas,home) {
   if(home.form===2){building(-.45,-.30,.84,.32,.49,3,7,3);building(-.39,.04,.43,.24,.34,2,4,2);}
   tree(-.52,.30,.35);tree(.56,-.28,.33);tree(.51,.33,.27);
 }
-export function drawAtlas(canvas, selected, visits, zoom) {
+export function drawAtlas(canvas, selected, visits, zoom, inventory=homes) {
   const {ctx,w,h}=surface(canvas);
   if(!w||!h)return;
   const unit=Math.min(w/16,h/8.5)*zoom;
@@ -108,7 +108,7 @@ export function drawAtlas(canvas, selected, visits, zoom) {
       if(bh>.28)tile(px+.04,py+.05,dx*.36,dy*.34,bh+.013,'#798278');
     }
   }
-  const home=homes.find(h=>h.id===selected);
+  const home=inventory.find(h=>h.id===selected);
   const anchors=[[6.6,8.3],[5.7,0],[.7,5.6]];
   anchors.forEach(([x,y], index)=>{
     if (!visits[index]) return;
@@ -126,5 +126,5 @@ export function drawAtlas(canvas, selected, visits, zoom) {
     const [px,py]=project(x,y);ctx.save();ctx.translate(px,py);ctx.rotate(rotation);ctx.textAlign='center';ctx.font='600 11px ui-monospace,monospace';ctx.lineWidth=3;ctx.strokeStyle='#1c2a22';ctx.strokeText(name,0,0);ctx.fillStyle='#ccd4c7';ctx.fillText(name,0,0);ctx.restore();
   }
   label('K E R R Y T O W N',.7,5.6);label('N O R T H   C A M P U S',5.7,0);label('C E N T R A L   C A M P U S',6.6,8.3);label('Huron River',3.8,3.25,.43);
-  return homes.map(({id,x,y}) => ({id, point:project(x,y,.08)}));
+  return inventory.map(({id,x,y}) => ({id, point:project(x,y,.08)}));
 }

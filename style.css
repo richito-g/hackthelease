@@ -483,3 +483,9 @@ dialog::backdrop { background: #17231d75; }
 .home-map-destination {color:#fff;background:#815228;font-size:12px}
 .home-map-choices {display:grid;gap:4px}
 .home-map-choices button {text-align:left;padding:6px 8px}
+
+.atlas-select {display:flex;flex-wrap:wrap;gap:10px 20px;margin:0 0 14px}
+.atlas-select label {display:flex;align-items:center;gap:8px}
+.atlas-choices {position:absolute;z-index:5;left:12px;bottom:12px;max-height:70%;overflow:auto;padding:10px;background:#fff;border-radius:4px;color:#202823}
+.atlas-choices button {padding:6px 10px}
+.atlas-choices button[aria-pressed] {display:block;width:100%;text-align:left}
