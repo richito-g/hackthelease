@@ -1,3 +1,5 @@
+import { homes } from './model.js';
+
 // Orthographic drawing shared by the neighborhood atlas and apartment studies.
 function surface(canvas) {
   const w=canvas.clientWidth, h=canvas.clientHeight, dpi=Math.min(devicePixelRatio||1,2);
@@ -28,7 +30,7 @@ function painter(ctx,project) {
   return {polygon,line,tile,box};
 }
 function seed(x,y,n=1) { const t=Math.sin(x*127.1+y*311.7+n*71.83)*43758.5453;return t-Math.floor(t); }
-function miniature(canvas,home) {
+export function miniature(canvas,home) {
   const {ctx,w,h}=surface(canvas); if(!w||!h)return;
   const s=Math.min(w/3.0,h/1.97);
   const cx=w*.52,cy=h*.59;
@@ -66,9 +68,8 @@ function miniature(canvas,home) {
   if(home.form===2){building(-.45,-.30,.84,.32,.49,3,7,3);building(-.39,.04,.43,.24,.34,2,4,2);}
   tree(-.52,.30,.35);tree(.56,-.28,.33);tree(.51,.33,.27);
 }
-let zoom=1;
-function drawAtlas(selected, visits, winner) {
-  const canvas=document.querySelector('#city'),{ctx,w,h}=surface(canvas);
+export function drawAtlas(canvas, selected, visits, zoom) {
+  const {ctx,w,h}=surface(canvas);
   if(!w||!h)return;
   const unit=Math.min(w/16,h/8.5)*zoom;
   const project=(x,y,z=0)=>[w*.5+(x-y+.35)*unit,h*.51+(x+y-8.7)*unit*.47-z*unit];
@@ -125,10 +126,5 @@ function drawAtlas(selected, visits, winner) {
     const [px,py]=project(x,y);ctx.save();ctx.translate(px,py);ctx.rotate(rotation);ctx.textAlign='center';ctx.font='600 11px ui-monospace,monospace';ctx.lineWidth=3;ctx.strokeStyle='#1c2a22';ctx.strokeText(name,0,0);ctx.fillStyle='#ccd4c7';ctx.fillText(name,0,0);ctx.restore();
   }
   label('K E R R Y T O W N',.7,5.6);label('N O R T H   C A M P U S',5.7,0);label('C E N T R A L   C A M P U S',6.6,8.3);label('Huron River',3.8,3.25,.43);
-  document.querySelectorAll('.pin').forEach(pin=>{
-    const h=homes.find(h=>h.id===pin.dataset.id),[x,y]=project(h.x,h.y,.08);
-    pin.style.left=x+'px';pin.style.top=y+'px';pin.classList.toggle('chosen',h.id===selected);pin.setAttribute('aria-pressed',String(h.id===selected));
-    pin.classList.toggle('winner',h.id===winner);
-    pin.setAttribute('aria-label','Select '+h.name+(h.id===winner?', best fit':''));
-  });
+  return homes.map(({id,x,y}) => ({id, point:project(x,y,.08)}));
 }

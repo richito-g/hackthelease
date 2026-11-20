@@ -1,16 +1,16 @@
 /* All listing attributes and walk times are authored scenarios, November 2026. */
-const destinations = ['Central Campus', 'North Campus', 'Kerrytown'];
-const homes = [
+export const destinations = ['Central Campus', 'North Campus', 'Kerrytown'];
+export const homes = [
   {id:'a', mark:'A', name:'The Monroe', area:'Central Campus', type:'Studio', rent:1040, utilities:80, minutes:[5,45,18], color:'#c0fb79', palette:['#b9a788','#8e795c','#625642'], form:0, x:5.5, y:7.5},
   {id:'b', mark:'B', name:'Riverbend Flats', area:'North Campus', type:'Private room', rent:855, utilities:95, minutes:[48,6,37], color:'#a8b7ff', palette:['#aab7be','#798b98','#526672'], form:1, x:6.5, y:1.5},
   {id:'c', mark:'C', name:'Market House', area:'Kerrytown', type:'Private room', rent:985, utilities:75, minutes:[18,36,4], color:'#ffb583', palette:['#c59985','#9e6c59','#714a41'], form:2, x:1.5, y:5.5}
 ];
-const presets = {
+export const presets = {
   central:{days:[4,1,0], budget:1350, value:18},
   north:{days:[1,4,0], budget:1350, value:18},
   market:{days:[2,0,4], budget:1150, value:18}
 };
-const cash = n => '$' + Math.round(n).toLocaleString('en-US');
+export const cash = n => '$' + Math.round(n).toLocaleString('en-US');
 // Illustrative weekday service, based on operator route geography.
 // Access, ride, headways and departure offsets are scenario inputs.
 const blue = (from, to, access, ride, exit, phase) =>
@@ -30,7 +30,7 @@ const transitRoutes = {
 };
 const intercampus = [blue(cctc,pierpont,4,12,3,0), ride23(cctc,plymouth,4,17,8,3)];
 
-function busOptions(home, destination, returning = false) {
+export function busOptions(home, destination, returning = false) {
   const source = home.transitArea ?? home.id;
   const routes = (transitRoutes[source]?.[destination] ?? []).map(route => ({
     ...route, access:Math.max(2,route.access+(home.stopOffset ?? 0))
@@ -54,14 +54,14 @@ function estimateTrip(walk, routes, mode) {
   return best;
 }
 
-function describeTrip(trip) {
+export function describeTrip(trip) {
   if (!trip.bus) return 'Walk · '+trip.minutes+' min';
   const {from,to,access,ride,exit} = trip.bus;
   return trip.label+' · '+from+' → '+to+' · '+access+' min walk + '+trip.wait+
     ' min wait + '+ride+' min ride + '+exit+' min walk';
 }
 
-function rankHomes(routine, inventory = homes) {
+export function rankHomes(routine, inventory = homes) {
   return inventory.map(home => {
     const monthly = home.rent + home.utilities;
     const trips = home.minutes.map((walk,i) => ({
@@ -76,12 +76,12 @@ function rankHomes(routine, inventory = homes) {
 }
 
 // Keep total campus visits fixed without exceeding either destination's input limit.
-function semesterBounds(days) {
+export function semesterBounds(days) {
   const total = days[0] + days[1];
   return { total, min: Math.max(0, total - 7), max: Math.min(7, total) };
 }
 
-function semesterWeeks(routine, first, last) {
+export function semesterWeeks(routine, first, last) {
   const { total } = semesterBounds(routine.days);
   return Array.from({length: last - first + 1}, (_, offset) => {
     const north = first + offset;
@@ -93,7 +93,7 @@ function semesterWeeks(routine, first, last) {
   });
 }
 
-function semesterHedge(weeks) {
+export function semesterHedge(weeks) {
   const choices = weeks[0].options.filter(home => home.eligible).map(home => ({
     ...home,
     worstGap: Math.max(...weeks.map(week => week.gaps[home.id]))
@@ -104,7 +104,7 @@ function semesterHedge(weeks) {
     a.monthly - b.monthly || a.id.localeCompare(b.id))[0] ?? null;
 }
 
-const classReplay = { lectureEnd: 11 * 60, labStart: 12 * 60 + 30, buffer: 5, minimum: 30, direct: 35 };
+export const classReplay = { lectureEnd: 11 * 60, labStart: 12 * 60 + 30, buffer: 5, minimum: 30, direct: 35 };
 
 // Use clock-dependent departures in the Tuesday replay. Buses in this
 // weekday scenario board between 07:00 and 22:00 at each modeled stop.
@@ -127,7 +127,7 @@ function scheduledTrip(walk, routes, clock, mode, backwards = false) {
   return best;
 }
 
-function replayDay(home, day) {
+export function replayDay(home, day) {
   const deadline = day.labStart - day.buffer;
   const inbound = scheduledTrip(home.minutes[0], busOptions(home,0,true), day.lectureEnd, day.mode);
   const outbound = scheduledTrip(home.minutes[1], busOptions(home,1), deadline, day.mode, true);
@@ -137,4 +137,10 @@ function replayDay(home, day) {
   return {arriveHome, leaveHome, free:Math.max(0,leaveHome-arriveHome), inbound, outbound, direct,
     directArrival:direct.time, directFits:direct.time <= deadline,
     fits:leaveHome-arriveHome >= day.minimum};
+}
+
+export function duration(minutes) {
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  return hours ? hours + 'h' + (rest ? ' ' + rest + 'm' : '') : rest + 'm';
 }
