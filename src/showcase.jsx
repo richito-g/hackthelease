@@ -1,30 +1,34 @@
 import React, { useState } from 'react';
 import { cash, duration, homes, presets, rankHomes, semesterHedge, semesterWeeks } from '../model.js';
 import { Study } from './ui.jsx';
+import { modes } from './state.js';
 
 const sample = {...presets.central,mode:'walk'};
 const weeks = semesterWeeks(sample,0,4);
 const baseline = rankHomes(sample);
-const baselineWinner = baseline[0];
+const cheapestSample = baseline.reduce((best,home)=>home.monthly<best.monthly ? home : best);
+const fastestSample = baseline.reduce((best,home)=>home.weekly<best.weekly ? home : best);
 const hedge = semesterHedge(weeks);
 const timeScale = 8 * 60;
 const colors = {a:'#365b48',b:'#4e6084',c:'#9a6143'};
 
-function WeekComparison({week}) {
-  const winner = week.winner;
-  const reordered = week.north !== sample.days[1];
-  const currentBaseline = week.options.find(home=>home.id===baselineWinner.id);
-  const savings = currentBaseline.weekly-winner.weekly;
-  const rentDifference = currentBaseline.monthly-winner.monthly;
+function WeekComparison({routine}) {
+  const walking = rankHomes({...routine,mode:'walk'});
+  const options = rankHomes(routine);
+  const winner = options[0];
+  const cheapest = options.reduce((best,home)=>home.monthly<best.monthly ? home : best);
+  const quickest = options.reduce((best,home)=>home.weekly<best.weekly ? home : best);
+  const extraTime = cheapest.weekly-quickest.weekly;
+  const discount = quickest.monthly-cheapest.monthly;
 
   return <section className="showcase-compare" aria-labelledby="showcase-compare-title">
     <div className="showcase-section-heading">
-      <div><h2 id="showcase-compare-title">How the week changes</h2><p>Housing costs stay fixed. Each bar shows total weekly walking on the same scale.</p></div>
-      <div className="chart-legend"><span>Original week</span><span>Selected week</span></div>
+      <div><h2 id="showcase-compare-title">Compare rent and weekly travel</h2><p>Travel includes both directions for every campus visit.</p></div>
+      <div className="chart-legend"><span>Walk only</span><span>Selected mode</span></div>
     </div>
     <div className="showcase-homes">{homes.map(home=>{
-      const before = baseline.find(item=>item.id===home.id);
-      const now = week.options.find(item=>item.id===home.id);
+      const before = walking.find(item=>item.id===home.id);
+      const now = options.find(item=>item.id===home.id);
       return <article className={'showcase-home '+(winner.id===home.id?'showcase-winner':'')} key={home.id} style={{'--campus-ink':colors[home.id]}}>
         <div className="showcase-home-art"><Study home={home} /></div>
         <header><div><h3>{home.name}</h3><p>{home.area} · {cash(now.monthly)}/mo</p></div>
@@ -36,11 +40,9 @@ function WeekComparison({week}) {
     })}</div>
     <div className="showcase-verdict" role="status">
       <span>Best fit</span><strong>{winner.name}</strong>
-      <p>{winner.id!==baselineWinner.id
-        ? (savings>0?duration(savings)+' less walking each week than '+baselineWinner.name+' in this scenario.'
-          : cash(rentDifference)+' less per month in housing, with '+duration(-savings)+' more walking each week than '+baselineWinner.name+'.')
-        : reordered ? 'This schedule still favors '+baselineWinner.name+' at the chosen budget and value of time.'
-          : 'Move a visit to North Campus to see whether the original recommendation holds up.'}</p>
+      <p>{extraTime>0
+        ? cheapest.name+' costs '+cash(discount)+' less per month than '+quickest.name+' and adds '+duration(extraTime)+' of travel each week.'
+        : cheapest.name+' has the lowest housing cost and is tied for or has the shortest commute.'}</p>
     </div>
   </section>;
 }
@@ -52,9 +54,9 @@ function LeaseRisk() {
 
   return <section className="showcase-risk" aria-labelledby="risk-title">
     <div className="showcase-section-heading">
-      <div><h2 id="risk-title">What if the schedule is still undecided?</h2><p>Check every week from zero to four North Campus visits.</p></div>
+      <div><h2 id="risk-title">How well does each home fit other routines?</h2><p>Optional: compare five walking schedules with different numbers of North Campus visits.</p></div>
       <button className="secondary" aria-expanded={expanded} aria-controls="risk-results"
-        onClick={()=>setExpanded(!expanded)}>{expanded?'Hide downside':'Reveal the least downside'}</button>
+        onClick={()=>setExpanded(!expanded)}>{expanded?'Hide results':'Compare across weeks'}</button>
     </div>
     {expanded && <div id="risk-results">
       <div className="risk-answer" role="status">
@@ -71,12 +73,13 @@ function LeaseRisk() {
 
 export default function Showcase() {
   const [north,setNorth] = useState(sample.days[1]);
-  const week = weeks[north];
+  const [mode,setMode] = useState('walk');
+  const routine = {...sample,days:[5-north,north,0],mode};
   return <section className="showcase" aria-labelledby="showcase-title">
     <div className="showcase-hero">
       <div><p className="eyebrow">HOMEBASE DEMO · ANN ARBOR</p>
-        <h1 id="showcase-title">Your lease is due Friday. Your schedule isn’t out yet.</h1>
-        <p>Pick a home for the week you expect. Then see what happens when one class day moves across campus.</p>
+        <h1 id="showcase-title">How much commute are you getting with that rent?</h1>
+        <p>In this sample week, {cheapestSample.name} costs {cash(fastestSample.monthly-cheapestSample.monthly)} less per month than {fastestSample.name} and adds {duration(cheapestSample.weekly-fastestSample.weekly)} of walking every week. Try taking the bus and compare again.</p>
       </div>
       <dl className="scenario-assumptions">
         <div><dt>Housing cap</dt><dd>{cash(sample.budget)}<small> / month</small></dd></div>
@@ -92,13 +95,17 @@ export default function Showcase() {
         </div>
         <p>{5-north} Central Campus · {north} North Campus</p>
       </div>
-      <button className="primary" onClick={()=>setNorth(north===2?1:2)}>{north===2?'Restore the original week':'Try two North Campus days'}</button>
+      <label className="showcase-mode">Commute mode
+        <select value={mode} onChange={event=>setMode(event.target.value)}>
+          {Object.entries(modes).map(([key,label])=><option value={key} key={key}>{label}</option>)}
+        </select>
+      </label>
     </div>
-    <WeekComparison week={week} />
+    <WeekComparison routine={routine} />
     <LeaseRisk />
     <details className="showcase-evidence">
       <summary>How Homebase makes the call</summary>
-      <p>First, exclude homes above the housing cap. For each remaining home, add rent and utilities to its estimated monthly walking hours multiplied by {cash(sample.value)} per hour. For undecided schedules, compare each home with the best choice for each week, then pick the home with the smallest maximum gap.</p>
+      <p>First, exclude homes above the housing cap. For each remaining home, add rent and utilities to its estimated monthly travel hours multiplied by {cash(sample.value)} per hour. To compare across routines, compare each home with the best choice for each week, then pick the home with the smallest maximum gap.</p>
       <p>Listings and travel times are illustrative. Try bus waits or your own routine in <a href="#semester">Semester lab</a>.</p>
     </details>
   </section>;

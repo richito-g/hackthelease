@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { isLocalPlace } from '../places.js';
 import { presets } from '../model.js';
 import { discoveryHomes, housingNeeds } from './listings.js';
 
@@ -27,7 +28,8 @@ function restoreDeck(data) {
   const needs = Array.isArray(data?.needs) ? data.needs.filter(need => Object.hasOwn(housingNeeds,need)) : [];
   const notes = Object.fromEntries(Object.entries(data?.notes ?? {}).filter(([id,value]) =>
     ids.has(id) && typeof value === 'string').map(([id,value]) => [id,value.slice(0,300)]));
-  return {swipes, needs, onlyFit:data?.onlyFit === true, notes};
+  const places = Array.isArray(data?.places) ? data.places.filter(p=>isLocalPlace(p) && Number.isInteger(p.visits) && p.visits>=0 && p.visits<=7) : [];
+  return {swipes, needs, places, onlyFit:data?.onlyFit === true, notes};
 }
 
 function useStored(key, restore) {

@@ -30,8 +30,9 @@ export function CampusStats({home,routine}) {
     <thead><tr><th scope="col">Destination</th><th scope="col">One way</th><th scope="col">Per week</th></tr></thead>
     <tbody>{home.trips.map(({out,back},index) => {
       const visits = routine.days[index];
-      return <tr key={destinations[index]}>
-        <th scope="row">{destinations[index]}<small>{out.label}{out.bus && ' · '+out.bus.from}</small></th>
+      const name = routine.names?.[index] ?? destinations[index];
+      return <tr key={index}>
+        <th scope="row">{name}<small>{out.label}{out.bus && ' · '+out.bus.from}</small></th>
         <td><strong>{out.minutes} min</strong>{back.minutes !== out.minutes && <small>{back.minutes} min back</small>}</td>
         <td><strong>{duration((out.minutes+back.minutes)*visits)}</strong><small>{visits} {visits===1?'visit':'visits'}</small></td>
       </tr>;

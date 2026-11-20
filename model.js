@@ -1,3 +1,4 @@
+import { originFor, stops, walkMinutes } from './places.js';
 /* All listing attributes and walk times are authored scenarios, November 2026. */
 export const destinations = ['Central Campus', 'North Campus', 'Kerrytown'];
 export const homes = [
@@ -61,14 +62,30 @@ export function describeTrip(trip) {
     ' min wait + '+ride+' min ride + '+exit+' min walk';
 }
 
-export function rankHomes(routine, inventory = homes) {
+export function customCommute(home,place,mode) {
+  const origin = originFor(home);
+  const destination = [place.lat,place.lon];
+  const walk = walkMinutes(origin,destination);
+  function direction(returning) {
+    const start = returning ? destination : origin;
+    const end = returning ? origin : destination;
+    const routes = destinations.flatMap((_,i)=>busOptions(home,i,returning)).map(bus=>({
+      ...bus, access:walkMinutes(start,stops[bus.from]), exit:walkMinutes(stops[bus.to],end)
+    }));
+    return estimateTrip(walk,routes,mode);
+  }
+  return {out:direction(false),back:direction(true)};
+}
+
+export function rankHomes(routine, inventory = homes, places = []) {
   return inventory.map(home => {
     const monthly = home.rent + home.utilities;
     const trips = home.minutes.map((walk,i) => ({
       out:estimateTrip(walk,busOptions(home,i),routine.mode),
       back:estimateTrip(walk,busOptions(home,i,true),routine.mode)
     }));
-    const weekly = trips.reduce((sum,trip,i) => sum + (trip.out.minutes + trip.back.minutes) * routine.days[i],0);
+    trips.push(...places.map(place=>customCommute(home,place,routine.mode)));
+    const weekly = trips.reduce((sum,trip,i) => sum + (trip.out.minutes + trip.back.minutes) * (routine.days[i] ?? places[i-destinations.length].visits),0);
     const burden = monthly + weekly * 4.33 / 60 * routine.value;
     return {...home, monthly, weekly, trips, burden, eligible:monthly <= routine.budget};
   }).sort((a,b) => Number(b.eligible)-Number(a.eligible) ||

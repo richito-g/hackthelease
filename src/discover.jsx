@@ -1,6 +1,8 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { cash, destinations, duration, rankHomes } from '../model.js';
 import { discoveryHomes, housingNeeds } from './listings.js';
+import PlacePicker from './place-picker.jsx';
+import { placeKey } from '../places.js';
 import { CampusStats, Dialog, ListingStats, Study } from './ui.jsx';
 
 function fitDescription(home) {
@@ -13,20 +15,20 @@ function fitDescription(home) {
 function WeekStrip({home,routine}) {
   if (!home.weekly) return null;
   const segments = home.trips.map(({out,back},index)=>({
-    name:['Central','North','Kerrytown'][index],
+    name:['Central','North','Kerrytown'][index] ?? routine.names[index],
     minutes:(out.minutes+back.minutes)*routine.days[index],
-    color:['#365b48','#4e6084','#9a6143'][index]
+    color:['#365b48','#4e6084','#9a6143'][index] ?? '#477e80'
   })).filter(segment=>segment.minutes>0);
   return <div className="week-strip" aria-hidden="true">
     <div className="week-strip-header"><span>Travel in your week</span><strong>{duration(home.weekly)}</strong></div>
-    <div className="week-strip-track">{segments.map(segment=><span key={segment.name}
+    <div className="week-strip-track">{segments.map((segment,index)=><span key={index}
       style={{flexGrow:segment.minutes,background:segment.color}} />)}</div>
-    <div className="week-strip-key">{segments.map(segment=><span key={segment.name} style={{'--visit-color':segment.color}}>
+    <div className="week-strip-key">{segments.map((segment,index)=><span key={index} style={{'--visit-color':segment.color}}>
       {segment.name} {duration(segment.minutes)}</span>)}</div>
   </div>;
 }
 
-function Listing({home,routine,onReview,cardRef}) {
+function Listing({home,routine,onReview,cardRef,onAddPlace}) {
   const start = useRef(null);
   const [drag,setDrag] = useState(0);
 
@@ -39,12 +41,12 @@ function Listing({home,routine,onReview,cardRef}) {
     data-dragging={drag ? '' : undefined} data-gesture={Math.abs(drag)>35 ? (drag>0?'save':'pass') : undefined}
     style={{'--drag':drag+'px','--tilt':Math.max(-9,Math.min(9,drag/18))+'deg'}}
     onKeyDown={event=>{
-      if (event.repeat || !['ArrowLeft','ArrowRight'].includes(event.key)) return;
+      if (event.target!==event.currentTarget || event.repeat || !['ArrowLeft','ArrowRight'].includes(event.key)) return;
       event.preventDefault();
       onReview(event.key==='ArrowRight'?'save':'pass');
     }}
     onPointerDown={event=>{
-      if (!event.isPrimary || event.button!==0) return;
+      if (event.target.closest('button,a,input,select') || !event.isPrimary || event.button!==0) return;
       start.current={x:event.clientX,y:event.clientY};
       event.currentTarget.setPointerCapture(event.pointerId);
     }}
@@ -74,6 +76,7 @@ function Listing({home,routine,onReview,cardRef}) {
       <p className={'listing-fit '+(home.eligible&&!home.missing.length?'fits':'')}>{fitDescription(home)}</p>
       <ListingStats home={home} routine={routine} />
       <CampusStats home={home} routine={routine} />
+      <button className="text-button add-place" onClick={onAddPlace}>+ Add a destination</button>
       <div className="listing-features">{home.features.map(key=><span key={key}>{housingNeeds[key]}</span>)}</div>
     </div>
   </article>;
@@ -85,7 +88,7 @@ function CompareSaved({homes,routine,onClose}) {
     ['Rent + utilities',home=>cash(home.rent)+' + '+cash(home.utilities)],
     ['Budget fit',home=>home.eligible?cash(routine.budget-home.monthly)+' left':cash(home.overBudget)+' over'],
     ['Weekly travel',home=>duration(home.weekly)],
-    ...destinations.map((name,index)=>[name,home=>home.trips[index].out.minutes+' min · '+home.trips[index].out.label]),
+    ...routine.names.map((name,index)=>[name,home=>home.trips[index].out.minutes+' min · '+home.trips[index].out.label]),
     ['Amenities',home=>home.features.map(need=>housingNeeds[need]).join(', ')],
     ['Must-haves missed',home=>home.missing.map(need=>housingNeeds[need]).join(', ') || 'None']
   ];
@@ -94,7 +97,7 @@ function CompareSaved({homes,routine,onClose}) {
     <p>Costs and travel times use your current routine.</p>
     <div className="table-wrap"><table className="saved-comparison">
       <thead><tr><th scope="col">Measure</th>{homes.map(home=><th key={home.id} scope="col">{home.name}</th>)}</tr></thead>
-      <tbody>{rows.map(([label,format])=><tr key={label}><th scope="row">{label}</th>{homes.map(home=><td key={home.id}>{format(home)}</td>)}</tr>)}</tbody>
+      <tbody>{rows.map(([label,format],index)=><tr key={index}><th scope="row">{label}</th>{homes.map(home=><td key={home.id}>{format(home)}</td>)}</tr>)}</tbody>
     </table></div>
   </Dialog>;
 }
@@ -105,7 +108,13 @@ const sortOptions = {
   commute: 'Shortest weekly commute'
 };
 
-export default function Discover({routine,deck,setDeck,onEdit,showSaved,setShowSaved}) {
+export default function Discover({routine:baseRoutine,deck,setDeck,onEdit,showSaved,setShowSaved}) {
+  const [picker,setPicker] = useState(false);
+  const places = deck.places;
+  const routine = useMemo(()=>({...baseRoutine,
+    names:[...destinations,...places.map(place=>place.name)],
+    days:[...baseRoutine.days,...places.map(place=>place.visits)]
+  }),[baseRoutine,places]);
   const [sort,setSort] = useState('fit');
   const [area,setArea] = useState('');
   const [compare,setCompare] = useState([]);
@@ -113,10 +122,10 @@ export default function Discover({routine,deck,setDeck,onEdit,showSaved,setShowS
   const [status,setStatus] = useState('');
   const cardRef = useRef(null);
   const undoRef = useRef(null);
-  const rated = useMemo(() => rankHomes(routine,discoveryHomes).map(home=>({
+  const rated = useMemo(() => rankHomes(baseRoutine,discoveryHomes,places).map(home=>({
     ...home, hasNeeds:deck.needs.length>0, overBudget:Math.max(0,home.monthly-routine.budget),
     missing:deck.needs.filter(need=>!home.features.includes(need))
-  })).sort((a,b)=>Number(b.eligible)-Number(a.eligible) || a.missing.length-b.missing.length),[routine,deck.needs]);
+  })).sort((a,b)=>Number(b.eligible)-Number(a.eligible) || a.missing.length-b.missing.length),[baseRoutine,places,deck.needs]);
 
   const reviewed = new Set(deck.swipes.map(entry=>entry.id));
   const savedIds = new Set(deck.swipes.filter(entry=>entry.action==='save').map(entry=>entry.id));
@@ -184,7 +193,7 @@ export default function Discover({routine,deck,setDeck,onEdit,showSaved,setShowS
           <label>Sort by <select value={sort} onChange={event=>setSort(event.target.value)}>{Object.entries(sortOptions).map(([key,label])=>
             <option value={key} key={key}>{label}</option>)}</select></label>
         </div>
-        <div id="card-stage">{home ? <Listing key={home.id} home={home} routine={routine} onReview={review} cardRef={cardRef} /> :
+        <div id="card-stage">{home ? <Listing key={home.id} home={home} routine={routine} onReview={review} cardRef={cardRef} onAddPlace={()=>setPicker(true)} /> :
           <div className="deck-empty"><h2>{deck.onlyFit || area?'No listings match these filters':'You’ve reached the end'}</h2>
             <p>{deck.onlyFit || area?'Try another neighborhood or adjust your must-haves.':'Compare saved homes or take another look at the listings you passed.'}</p>
             {deck.swipes.some(entry=>entry.action==='pass') && <button className="secondary" onClick={()=>
@@ -205,6 +214,14 @@ export default function Discover({routine,deck,setDeck,onEdit,showSaved,setShowS
           <div><dt>Monthly cap</dt><dd>{cash(routine.budget)}</dd></div>
           {destinations.map((name,index)=><div key={name}><dt>{name}</dt><dd>{routine.days[index]} {routine.days[index]===1?'visit':'visits'}/wk</dd></div>)}
         </dl>
+        {places.map((place,index)=><div className="custom-place" key={placeKey(place)}>
+          <label>{place.name}<select aria-label={'Weekly visits to '+place.name} value={place.visits} onChange={event=>{
+            const visits=Number(event.target.value);
+            setDeck(current=>({...current,places:current.places.map((p,i)=>i===index?{...p,visits}:p)}));
+          }}>{Array.from({length:8},(_,n)=><option key={n} value={n}>{n} visits/wk</option>)}</select></label>
+          <button className="text-button" aria-label={'Remove '+place.name} onClick={()=>setDeck(current=>({...current,places:current.places.filter(p=>placeKey(p)!==placeKey(place))}))}>Remove</button>
+        </div>)}
+        <button className="text-button add-place" onClick={()=>setPicker(true)}>+ Add a destination</button>
         <label className="area-filter">Neighborhood<select value={area} onChange={event=>setArea(event.target.value)}>
           <option value="">All neighborhoods</option>
           {[...new Set(discoveryHomes.map(item=>item.area))].sort().map(name=><option key={name}>{name}</option>)}
@@ -216,6 +233,10 @@ export default function Discover({routine,deck,setDeck,onEdit,showSaved,setShowS
           onChange={event=>{const onlyFit=event.target.checked;setDeck(current=>({...current,onlyFit}));}} /> Only show homes that fit</label>
       </aside>
     </div>}
+    {picker && <PlacePicker home={home} places={places} onClose={()=>setPicker(false)} onAdd={place=>{
+      setDeck(current=>current.places.some(p=>placeKey(p)===placeKey(place)) ? current : {...current,places:[...current.places,place]});
+      setPicker(false); setStatus('Added '+place.name+' to your routine.');
+    }}/>}
     <p role="status" className="sr">{status}</p>
   </section>;
 }
