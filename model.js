@@ -29,7 +29,6 @@ const transitRoutes = {
   c: {0:[ride23(downtown,cctc,9,8,3,0)],
       1:[blue('Glen & Catherine',pierpont,13,10,3,4), ride23(downtown,plymouth,9,24,8,0)]}
 };
-const intercampus = [blue(cctc,pierpont,4,12,3,0), ride23(cctc,plymouth,4,17,8,3)];
 
 export function busOptions(home, destination, returning = false) {
   const source = home.transitArea ?? home.id;
@@ -119,41 +118,6 @@ export function semesterHedge(weeks) {
   return choices.sort((a,b) => a.worstGap - b.worstGap ||
     Number(b.id === weeklyWinner) - Number(a.id === weeklyWinner) ||
     a.monthly - b.monthly || a.id.localeCompare(b.id))[0] ?? null;
-}
-
-export const classReplay = { lectureEnd: 11 * 60, labStart: 12 * 60 + 30, buffer: 5, minimum: 30, direct: 35 };
-
-// Use clock-dependent departures in the Tuesday replay. Buses in this
-// weekday scenario board between 07:00 and 22:00 at each modeled stop.
-function scheduledTrip(walk, routes, clock, mode, backwards = false) {
-  let best = {time:clock + (backwards ? -walk : walk), label:'Walk'};
-  if (mode !== 'transit' && mode !== 'missed') return best;
-  for (const bus of routes) {
-    const first = 420 + bus.phase;
-    const last = first + Math.floor((1320-first)/bus.headway)*bus.headway;
-    const missed = mode === 'missed' ? bus.headway : 0;
-    const departure = backwards
-      ? Math.min(last, first + Math.floor((clock-bus.ride-bus.exit-first)/bus.headway)*bus.headway)
-      : Math.max(first, first + Math.ceil((clock+bus.access-first)/bus.headway)*bus.headway) + missed;
-    if (departure < first + (backwards ? missed : 0) || departure > last) continue;
-    const time = backwards ? departure - missed - bus.access : departure + bus.ride + bus.exit;
-    if (backwards ? time > best.time : time < best.time) {
-      best = {time,label:bus.route+' via '+bus.from,bus,departure};
-    }
-  }
-  return best;
-}
-
-export function replayDay(home, day) {
-  const deadline = day.labStart - day.buffer;
-  const inbound = scheduledTrip(home.minutes[0], busOptions(home,0,true), day.lectureEnd, day.mode);
-  const outbound = scheduledTrip(home.minutes[1], busOptions(home,1), deadline, day.mode, true);
-  const direct = scheduledTrip(day.direct, intercampus, day.lectureEnd, day.mode);
-  const arriveHome = inbound.time;
-  const leaveHome = outbound.time;
-  return {arriveHome, leaveHome, free:Math.max(0,leaveHome-arriveHome), inbound, outbound, direct,
-    directArrival:direct.time, directFits:direct.time <= deadline,
-    fits:leaveHome-arriveHome >= day.minimum};
 }
 
 export function duration(minutes) {

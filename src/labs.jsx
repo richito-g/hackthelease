@@ -1,7 +1,7 @@
 import React, { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { drawAtlas } from '../atlas.js';
-import { busOptions, cash, classReplay, describeTrip, destinations, duration, homes, presets,
-  rankHomes, replayDay, semesterBounds, semesterHedge, semesterWeeks } from '../model.js';
+import { busOptions, cash, describeTrip, destinations, duration, homes, presets,
+  rankHomes, semesterBounds, semesterHedge, semesterWeeks } from '../model.js';
 import { CampusStats, Dialog, ListingStats, Study } from './ui.jsx';
 
 // Positions on the illustrated atlas are neighborhood anchors, not street addresses.
@@ -226,58 +226,4 @@ export function SemesterLab({deck,routine,setRoutine,onEdit}) {
     </section>
     {detail && <BenchmarkDialog detail={detail} routine={detailRoutine} ranked={ranked} onClose={()=>setDetail(null)} />}
   </>;
-}
-
-const timeInput = minutes=>String(Math.floor(minutes/60)).padStart(2,'0')+':'+String(minutes%60).padStart(2,'0');
-const parseTime = value=>value ? Number(value.slice(0,2))*60+Number(value.slice(3,5)) : NaN;
-function clockTime(minutes) {
-  return new Intl.DateTimeFormat('en-US',{hour:'numeric',minute:'2-digit',timeZone:'UTC'}).format(minutes*60000);
-}
-
-export function DayReplay({mode}) {
-  const [lecture,setLecture]=useState(timeInput(classReplay.lectureEnd));
-  const [lab,setLab]=useState(timeInput(classReplay.labStart));
-  const [minimum,setMinimum]=useState(String(classReplay.minimum));
-  const day={...classReplay,lectureEnd:parseTime(lecture),labStart:parseTime(lab),minimum:minimum===''?NaN:Number(minimum),mode};
-  const gap=day.labStart-day.lectureEnd;
-  const valid=gap>0 && Number.isInteger(day.minimum) && day.minimum>=0 && day.minimum<=180;
-  const results=valid ? homes.map(home=>({home,...replayDay(home,day)})) : [];
-  const feasible=results.filter(result=>result.fits);
-  const direct=results[0];
-  let summary='Enter a valid minimum and a lab start after the lecture ends.';
-  if (valid) {
-    summary=feasible.length>0 ? feasible.map(result=>result.home.name).join(', ') +
-      (feasible.length===1?' leaves':' leave')+' at least '+day.minimum+' minutes at home.' :
-      'None of the three homes leaves enough time for this break.';
-    summary+=' '+(direct.directFits ? 'Direct trip arrives at '+clockTime(direct.directArrival)+' · '+direct.direct.label+'.' :
-      'The fastest direct trip misses the arrival buffer.');
-  }
-  return <section className="lab" aria-labelledby="replay-title">
-    <div className="lab-heading"><div><h2 id="replay-title">Can you get home for lunch?</h2><p>One Tuesday, a Central Campus lecture and a North Campus lab.</p></div>
-      <button className="primary" disabled={!(gap>4)} onClick={()=>setLab(timeInput(day.labStart-4))}>Lab starts 4 minutes earlier</button></div>
-    <div className="replay-controls">
-      <label>Lecture ends<input type="time" value={lecture} onChange={event=>setLecture(event.target.value)} /></label>
-      <label>Lab starts<input type="time" value={lab} onChange={event=>setLab(event.target.value)} /></label>
-      <label>Minimum time at home<input type="number" min="0" max="180" value={minimum} onChange={event=>setMinimum(event.target.value)} /></label>
-    </div>
-    <div id="replay-result" aria-live="polite">{summary}</div>
-    {valid && <div id="replay-lanes">
-      <div className="timeline-scale"><span>{clockTime(day.lectureEnd)} · lecture ends</span><span>Lab starts · {clockTime(day.labStart)}</span></div>
-      {results.map(result=>{
-        const {home,arriveHome,leaveHome,free,fits,inbound,outbound}=result;
-        const possible=leaveHome>=arriveHome;
-        const segments=possible?[arriveHome-day.lectureEnd,free,day.labStart-day.buffer-leaveHome,day.buffer]:[gap];
-        return <div className="replay-lane" key={home.id}>
-          <div className="lane-head"><strong>{home.name}</strong><span className={fits?'fits':'misses'}>{possible?free+' min at home':'Detour exceeds gap'}</span></div>
-          <div className={'timeline-track '+(possible?'':'clipped')} aria-hidden="true">
-            {segments.map((minutes,index)=><span key={index} className={'segment segment-'+index} style={{width:minutes/gap*100+'%'}} />)}
-          </div>
-          <div className="lane-detail">{possible?'Home '+clockTime(arriveHome)+' ('+inbound.label+') · Leave '+clockTime(leaveHome)+' ('+outbound.label+')':
-            'Travel and arrival buffer exceed the available time.'}</div>
-        </div>;
-      })}
-      <div className="timeline-key"><span>Travel</span><span>Time at home</span><span>Arrival buffer</span></div>
-    </div>}
-    <p className="lab-note">Tuesday replay uses a 5-minute arrival buffer and illustrative weekday departures.</p>
-  </section>;
 }

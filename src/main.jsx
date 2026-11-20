@@ -4,12 +4,12 @@ import { placeKey } from '../places.js';
 import { cash, destinations, presets } from '../model.js';
 import Discover from './discover.jsx';
 import Showcase from './showcase.jsx';
-import { DayReplay, SemesterLab } from './labs.jsx';
+import { SemesterLab } from './labs.jsx';
 import { modes, restoreDeck, useDeck, useRoutine } from './state.js';
 import { Dialog } from './ui.jsx';
 import '../style.css';
 
-const pages = {discover:'Discover',semester:'Semester lab',replay:'Day replay'};
+const pages = {discover:'Discover',semester:'Semester lab'};
 function currentPage() {
   const page=window.location.hash.slice(1);
   return Object.hasOwn(pages,page) || page==='demo' ? page : 'discover';
@@ -126,7 +126,6 @@ function App() {
         <Discover routine={routine} setRoutine={setRoutine} deck={deck} setDeck={setDeck} onEdit={edit} showSaved={showSaved} setShowSaved={setShowSaved} />
       </div>
       <div hidden={page!=='semester'}><SemesterLab deck={deck} routine={routine} setRoutine={setRoutine} onEdit={edit} /></div>
-      <div hidden={page!=='replay'}><DayReplay mode={routine.mode} /></div>
       </React.Fragment>
       <footer><span>Homebase · University of Michigan pilot</span><button onClick={()=>setDialog('method')}>Demo data & methodology</button></footer>
     </main>
