@@ -24,10 +24,10 @@ export function ListingStats({home,routine}) {
   </dl>;
 }
 
-export function CampusStats({home,routine}) {
+export function CampusStats({home,routine,onRemove}) {
   return <table className="listing-commutes">
     <caption>Estimated travel from this home</caption>
-    <thead><tr><th scope="col">Destination</th><th scope="col">One way</th><th scope="col">Per week</th></tr></thead>
+    <thead><tr><th scope="col">Destination</th><th scope="col">One way</th><th scope="col">Per week</th>{onRemove && <th scope="col"><span className="sr">Remove destination</span></th>}</tr></thead>
     <tbody>{home.trips.map(({out,back},index) => {
       const visits = routine.days[index];
       if (!visits && routine.hiddenCampuses?.includes(index)) return null;
@@ -36,6 +36,9 @@ export function CampusStats({home,routine}) {
         <th scope="row">{name}<small>{out.label}{out.bus && ' · '+out.bus.from}</small></th>
         <td><strong>{out.minutes} min</strong>{back.minutes !== out.minutes && <small>{back.minutes} min back</small>}</td>
         <td><strong>{duration((out.minutes+back.minutes)*visits)}</strong><small>{visits} {visits===1?'visit':'visits'}</small></td>
+        {onRemove && <td className="destination-action"><button type="button" className="destination-remove"
+          aria-label={'Remove '+name+' from your routine'} title={'Remove '+name+' from your routine'}
+          onClick={()=>onRemove(index)}>×</button></td>}
       </tr>;
     })}</tbody>
   </table>;

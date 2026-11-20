@@ -112,12 +112,19 @@ header { background: var(--paper); border-bottom: 1px solid var(--line); }
 .listing-commutes td strong { font-weight: 620; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .listing-features { display: flex; flex-wrap: wrap; gap: 5px 11px; margin-top: 11px; color: var(--muted); font-size: 13px; }
 .listing-features span::before { content: "·"; margin-right: 5px; color: var(--accent); font-weight: 700; }
-.deck-controls { display: grid; grid-template-columns: auto 1fr 1fr; gap: 8px; margin-top: 12px; }
-.deck-controls button { min-height: 44px; padding: 6px 13px; border: 1px solid var(--strong-line); border-radius: var(--radius); background: var(--paper); font-size: 14px; font-weight: 650; }
-.deck-controls button:hover:not(:disabled) { background: var(--wash); }
-.deck-controls span { margin-inline: 2px; }
-.deck-controls #save-home { background: var(--accent); border-color: var(--accent); color: #fff; }
-.deck-controls #save-home:hover:not(:disabled) { background: #19372a; }
+.swipe-actions {
+  grid-column: 1 / -1;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+  padding: 10px clamp(12px, 2vw, 20px); border-top: 1px solid var(--line);
+}
+.deck-controls { display: flex; justify-content: center; margin-top: 9px; }
+.swipe-actions button, .deck-controls button {
+  min-height: 44px; padding: 6px 13px; border: 1px solid var(--strong-line);
+  border-radius: var(--radius); background: var(--paper); font-size: 14px; font-weight: 650;
+}
+.swipe-actions button:hover, .deck-controls button:hover:not(:disabled) { background: var(--wash); }
+.swipe-actions #save-home { background: var(--accent); border-color: var(--accent); color: #fff; }
+.swipe-actions #save-home:hover { background: #19372a; }
 .deck-hint { margin-top: 7px; color: var(--muted); font-size: 12px; text-align: center; }
 
 .housing-profile { border-left: 1px solid var(--line); padding-left: 19px; }
@@ -302,7 +309,6 @@ dialog::backdrop { background: #17231d75; }
   .listing-art { min-height: 0; height: 122px; border-right: 0; border-bottom: 1px solid var(--line); }
   .listing-area, .art-caption { left: 11px; }
   .listing-body { padding: 12px; }
-  .deck-controls { margin-top: 9px; }
   .housing-profile, .lab-grid > div + div { padding: 12px 0 0; border-left: 0; border-top: 1px solid var(--line); }
   #housing-needs { display: grid; grid-template-columns: 1fr 1fr; gap: 0 5px; }
   .saved-home { grid-template-columns: 1fr; gap: 10px; }
@@ -492,3 +498,12 @@ dialog::backdrop { background: #17231d75; }
 
 .routine-destination {display:flex;align-items:center;gap:.8rem}
 .routine-destination .formrow {flex:1;min-width:0}
+
+.listing-commutes .destination-action {width:32px;vertical-align:middle;text-align:right}
+.destination-remove {width:32px;height:32px;padding:0;border:0;background:transparent;color:var(--muted);font:20px/1 var(--sans);cursor:pointer}
+.destination-remove:hover,.destination-remove:focus-visible {background:#e9ede7;color:#202823}
+
+.map-transit-controls {display:flex;align-items:center;flex-wrap:wrap;gap:6px 16px;margin-bottom:10px}
+.map-transit-controls label {display:flex;align-items:center;gap:6px}
+.map-transit-controls small:not(:empty) {width:100%;color:var(--muted)}
+.home-map-bus {display:grid;place-items:center;background:#143960;color:#fff;border:2px solid #fff;border-radius:5px;font:700 9px/1 system-ui;box-shadow:0 1px 4px #0005}

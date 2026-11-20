@@ -94,7 +94,7 @@ function App() {
     window.location.hash='discover';
     setPage('discover');
     window.scrollTo(0,0);
-    setNotice('Demo reset. All 24 homes are ready to review.');
+    setNotice('Homebase reset. All 24 homes are ready to review.');
     requestAnimationFrame(()=>document.getElementById('main-content')?.focus({preventScroll:true}));
   }
   const edit=()=>setDialog('routine');
@@ -115,7 +115,7 @@ function App() {
     </div></header>
     <main id="main-content" tabIndex={-1}>
       <div className="view-toolbar">{page!=='demo' && <a className="demo-link" href="#demo">Try the demo <span aria-hidden="true">↗</span></a>}<div className="intro-actions">
-        <button className="edit" onClick={()=>setDialog('reset')}>Reset demo</button>
+        <button className="edit" onClick={()=>setDialog('reset')}>Reset</button>
         {page!=='demo' && <>
         <label>Commute <ModeSelect value={routine.mode} onChange={mode=>setRoutine({...routine,mode})}/></label>
         <button className="edit" onClick={edit}>Edit routine</button></>}
@@ -123,7 +123,7 @@ function App() {
       <React.Fragment key={run}>
       {page==='demo' && <Showcase />}
       <div hidden={page!=='discover'}>
-        <Discover routine={routine} deck={deck} setDeck={setDeck} onEdit={edit} showSaved={showSaved} setShowSaved={setShowSaved} />
+        <Discover routine={routine} setRoutine={setRoutine} deck={deck} setDeck={setDeck} onEdit={edit} showSaved={showSaved} setShowSaved={setShowSaved} />
       </div>
       <div hidden={page!=='semester'}><SemesterLab deck={deck} routine={routine} setRoutine={setRoutine} onEdit={edit} /></div>
       <div hidden={page!=='replay'}><DayReplay mode={routine.mode} /></div>
@@ -135,7 +135,7 @@ function App() {
       setRoutine(updated);setNotice('Routine updated. Monthly cap '+cash(updated.budget)+'.');close();
     }} onClose={close}/>}
     {dialog==='reset' && <Dialog onClose={close}>
-      <h2 id="dialog-title">Reset the demo?</h2>
+      <h2 id="dialog-title">Reset Homebase?</h2>
       <p>This clears saved and passed homes, notes, custom destinations and filters in this browser. You’ll return to Discover with the starting routine and all 24 homes.</p>
       <div className="modal-actions"><button className="secondary" onClick={close}>Cancel</button>
         <button className="primary" onClick={resetDemo}>Reset and start over</button></div>

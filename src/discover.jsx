@@ -28,7 +28,7 @@ function WeekStrip({home,routine}) {
   </div>;
 }
 
-function Listing({home,routine,onReview,cardRef,onAddPlace}) {
+function Listing({home,routine,onReview,cardRef,onAddPlace,onRemoveDestination}) {
   const start = useRef(null);
   const [drag,setDrag] = useState(0);
 
@@ -75,9 +75,13 @@ function Listing({home,routine,onReview,cardRef,onAddPlace}) {
       <h2>{home.name}</h2>
       <p className={'listing-fit '+(home.eligible&&!home.missing.length?'fits':'')}>{fitDescription(home)}</p>
       <ListingStats home={home} routine={routine} />
-      <CampusStats home={home} routine={routine} />
+      <CampusStats home={home} routine={routine} onRemove={onRemoveDestination} />
       <button className="text-button add-place" onClick={onAddPlace}>+ Add a destination</button>
       <div className="listing-features">{home.features.map(key=><span key={key}>{housingNeeds[key]}</span>)}</div>
+    </div>
+    <div className="swipe-actions" role="group" aria-label="Review this home">
+      <button type="button" onClick={()=>onReview('pass')}>Pass</button>
+      <button type="button" id="save-home" onClick={()=>onReview('save')}>Save home</button>
     </div>
   </article>;
 }
@@ -108,7 +112,7 @@ const sortOptions = {
   commute: 'Shortest weekly commute'
 };
 
-export default function Discover({routine:baseRoutine,deck,setDeck,onEdit,showSaved,setShowSaved}) {
+export default function Discover({routine:baseRoutine,setRoutine,deck,setDeck,onEdit,showSaved,setShowSaved}) {
   const [picker,setPicker] = useState(false);
   const places = deck.places;
   const routine = useMemo(()=>({...baseRoutine,
@@ -137,7 +141,7 @@ export default function Discover({routine:baseRoutine,deck,setDeck,onEdit,showSa
 
   function review(action) {
     if (!home) return;
-    const keepFocus = document.activeElement === cardRef.current;
+    const keepFocus = cardRef.current?.contains(document.activeElement);
     setDeck(current=>current.swipes.some(entry=>entry.id===home.id) ? current : ({
       ...current,swipes:[...current.swipes,{id:home.id,action}]
     }));
@@ -153,6 +157,18 @@ export default function Discover({routine:baseRoutine,deck,setDeck,onEdit,showSa
   function removePlace(place) {
     setDeck(current=>({...current,places:current.places.filter(p=>placeKey(p)!==placeKey(place))}));
     setStatus('Removed '+place.name+' from your routine.');
+  }
+
+  function removeDestination(index) {
+    if (index>=destinations.length) {
+      removePlace(places[index-destinations.length]);
+      return;
+    }
+    setRoutine(current=>({...current,
+      days:current.days.map((visits,i)=>i===index?0:visits),
+      hiddenCampuses:[...(current.hiddenCampuses ?? []).filter(i=>i!==index),index]
+    }));
+    setStatus('Removed '+destinations[index]+' from your routine.');
   }
 
   function removeSaved(id) {
@@ -184,7 +200,7 @@ export default function Discover({routine:baseRoutine,deck,setDeck,onEdit,showSa
             <button className="text-button remove-saved" onClick={()=>removeSaved(item.id)}>Remove from saved</button>
           </div>
           <ListingStats home={item} routine={routine} />
-          <CampusStats home={item} routine={routine} />
+          <CampusStats home={item} routine={routine} onRemove={removeDestination} />
           <label className="listing-note">Notes <textarea rows={2} maxLength={300} value={deck.notes[item.id] ?? ''}
             onChange={event=>{const note=event.target.value;setDeck(current=>({...current,notes:{...current.notes,[item.id]:note}}));}}
             placeholder="Tour questions, lease dates, or a detail to remember" /></label>
@@ -199,7 +215,7 @@ export default function Discover({routine:baseRoutine,deck,setDeck,onEdit,showSa
           <label>Sort by <select value={sort} onChange={event=>setSort(event.target.value)}>{Object.entries(sortOptions).map(([key,label])=>
             <option value={key} key={key}>{label}</option>)}</select></label>
         </div>
-        <div id="card-stage">{home ? <Listing key={home.id} home={home} routine={routine} onReview={review} cardRef={cardRef} onAddPlace={()=>setPicker(true)} /> :
+        <div id="card-stage">{home ? <Listing key={home.id} home={home} routine={routine} onReview={review} cardRef={cardRef} onRemoveDestination={removeDestination} onAddPlace={()=>setPicker(true)} /> :
           <div className="deck-empty"><h2>{deck.onlyFit || area?'No listings match these filters':'You’ve reached the end'}</h2>
             <p>{deck.onlyFit || area?'Try another neighborhood or adjust your must-haves.':'Compare saved homes or take another look at the listings you passed.'}</p>
             {deck.swipes.some(entry=>entry.action==='pass') && <button className="secondary" onClick={()=>
@@ -209,8 +225,6 @@ export default function Discover({routine:baseRoutine,deck,setDeck,onEdit,showSa
           <button ref={undoRef} disabled={!deck.swipes.length} onClick={()=>{
             setDeck(current=>({...current,swipes:current.swipes.slice(0,-1)}));setStatus('Undid the last swipe.');
           }}>↶ Undo</button>
-          <button disabled={!home} onClick={()=>review('pass')}>Pass</button>
-          <button id="save-home" disabled={!home} onClick={()=>review('save')}>Save home</button>
         </div>
         <p className="deck-hint">Swipe left to pass, right to save. Arrow keys work when the listing is focused.</p>
       </div>
